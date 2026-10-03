@@ -1,0 +1,711 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Oozing Slime Box Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&family=Silkscreen&display=swap">
+<style>
+/* Layout: inputs in a narrow left column, the live box (equations, verdict, side view) in a framed panel on the right; glossary full width below. */
+:root {
+  --bg: #eef2ec;
+  --panel: #fbfcfa;
+  --field: #ffffff;
+  --code-bg: #e3e9df;
+  --ink: #1a2418;
+  --muted: #566552;
+  --line: #d3dccd;
+  --line-strong: #a9b7a3;
+  --slime: #357a26;
+  --slime-soft: #d6ecca;
+  --box: #a8540f;
+  --mob: #6a559a;
+  --miss: #b0352f;
+  --font-display: "Silkscreen", ui-monospace, "Courier New", monospace;
+  --font-body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121712;
+    --panel: #192019;
+    --field: #0f140f;
+    --code-bg: #1f281e;
+    --ink: #e2eadf;
+    --muted: #9aa995;
+    --line: #2c372b;
+    --line-strong: #4a5a47;
+    --slime: #86c96c;
+    --slime-soft: #213a1b;
+    --box: #e5a05a;
+    --mob: #b3a2e0;
+    --miss: #ec8279;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121712;
+  --panel: #192019;
+  --field: #0f140f;
+  --code-bg: #1f281e;
+  --ink: #e2eadf;
+  --muted: #9aa995;
+  --line: #2c372b;
+  --line-strong: #4a5a47;
+  --slime: #86c96c;
+  --slime-soft: #213a1b;
+  --box: #e5a05a;
+  --mob: #b3a2e0;
+  --miss: #ec8279;
+  color-scheme: dark;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.55;
+}
+.wrap {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding-inline: 20px;
+  padding-block: 28px 56px;
+  display: grid;
+  gap: 32px;
+}
+.wrap > * { min-width: 0; }
+h1, h2, h3 { margin: 0; text-wrap: balance; }
+h1 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(26px, 5.2vw, 42px);
+  line-height: 1.08;
+  letter-spacing: 0.01em;
+}
+h2 { font-size: 19px; line-height: 1.3; }
+.eyebrow, legend, .label {
+  font-family: var(--font-display);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.eyebrow { color: var(--slime); margin: 0 0 10px; }
+.lede { max-width: 64ch; color: var(--muted); margin: 12px 0 0; }
+code, .mono { font-family: var(--font-mono); font-size: 0.9em; }
+.snippet {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  margin-top: 16px;
+  padding: 8px 12px;
+  background: var(--code-bg);
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  white-space: pre;
+}
+
+.general { display: grid; gap: 10px; min-width: 0; }
+.math { overflow-x: auto; overflow-y: hidden; min-width: 0; padding-block: 4px; }
+.tex-fallback { font-family: var(--font-mono); font-size: 14px; white-space: pre-wrap; color: var(--ink); }
+mjx-container[display="true"] { display: block !important; margin: 0 !important; text-align: left !important; }
+mjx-assistive-mml { position: absolute !important; width: 1px !important; height: 1px !important; overflow: hidden !important; clip: rect(1px, 1px, 1px, 1px) !important; }
+mjx-container { color: var(--ink); }
+.general .math mjx-container { font-size: 112%; }
+
+.grid { display: grid; gap: 28px; grid-template-columns: minmax(0, 1fr); align-items: start; }
+@media (min-width: 880px) {
+  .grid { grid-template-columns: minmax(0, 330px) minmax(0, 1fr); }
+}
+
+.inputs { display: grid; gap: 26px; min-width: 0; }
+fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 12px; min-width: 0; }
+legend { padding: 0; margin-bottom: 10px; }
+.field { display: grid; gap: 5px; min-width: 0; }
+.field label { font-weight: 700; font-size: 14px; }
+.hint { font-size: 13px; color: var(--muted); line-height: 1.45; }
+input, select {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  padding: 8px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--field);
+  color: var(--ink);
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+input:focus-visible, select:focus-visible { outline: 2px solid var(--slime); outline-offset: 1px; }
+input[aria-invalid="true"] { border-color: var(--miss); outline-color: var(--miss); }
+.row2, .row3 { display: grid; gap: 10px; }
+.row2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.row3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 20px;
+  display: grid;
+  gap: 22px;
+  min-width: 0;
+}
+.panel section { display: grid; gap: 10px; min-width: 0; }
+.error { color: var(--miss); font-weight: 700; margin: 0; }
+
+.figures { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin: 0; }
+.figures div { border-top: 2px solid var(--line); padding-top: 8px; min-width: 0; }
+.figures dt { font-size: 13px; color: var(--muted); }
+.figures dd { margin: 2px 0 0; font-family: var(--font-mono); font-size: 18px; font-variant-numeric: tabular-nums; }
+.figures dd small { font-size: 12px; color: var(--muted); }
+
+.checks { display: grid; gap: 8px; }
+.check-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; }
+.check-row .math { flex: 1 1 auto; }
+.pill {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1.5px solid currentColor;
+}
+.pill.yes { color: var(--slime); }
+.pill.no { color: var(--miss); }
+.verdict { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-weight: 700; }
+.verdict .pill { font-size: 14px; padding: 3px 12px; }
+
+.diagram { overflow-x: auto; }
+.diagram svg { display: block; width: 100%; min-width: 440px; height: auto; }
+.g-grid { stroke: var(--line); stroke-width: 1; }
+.g-axis { stroke: var(--line-strong); stroke-width: 1.5; }
+.g-zone { fill: var(--slime-soft); stroke: var(--slime); stroke-width: 1.5; stroke-dasharray: 3 3; }
+.g-box { fill: none; stroke: var(--box); stroke-width: 2; stroke-dasharray: 8 5; }
+.g-mob { fill: var(--mob); fill-opacity: 0.28; stroke: var(--mob); stroke-width: 2; }
+.g-slime { fill: var(--slime); fill-opacity: 0.3; stroke: var(--slime); stroke-width: 2; }
+.g-slime.out { fill: var(--miss); stroke: var(--miss); }
+.g-dot { fill: var(--ink); }
+.g-dot.slime { fill: var(--slime); }
+.g-dot.out { fill: var(--miss); }
+.g-tick { fill: var(--muted); font-family: var(--font-mono); font-size: 12px; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13px; color: var(--muted); margin: 0; padding: 0; list-style: none; }
+.sw { display: inline-block; width: 16px; height: 10px; margin-right: 6px; vertical-align: -1px; border-radius: 2px; }
+.sw.mob { background: color-mix(in srgb, var(--mob) 30%, transparent); border: 2px solid var(--mob); }
+.sw.box { border: 2px dashed var(--box); }
+.sw.zone { background: var(--slime-soft); border: 1.5px dashed var(--slime); }
+.sw.slime { background: color-mix(in srgb, var(--slime) 30%, transparent); border: 2px solid var(--slime); }
+
+.glossary { display: grid; gap: 14px; min-width: 0; }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 15px; }
+th, td { text-align: left; vertical-align: top; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+th { font-family: var(--font-display); font-weight: 400; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+td:first-child { white-space: nowrap; min-width: 92px; }
+td .math { padding: 0; }
+.fine { font-size: 13px; color: var(--muted); max-width: 72ch; margin: 0; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<script>
+window.MathJax = {
+  options: { enableMenu: false, enableAssistiveMml: false },
+  svg: { fontCache: "local" },
+  startup: {
+    typeset: false,
+    ready: function () {
+      MathJax.startup.defaultReady();
+      MathJax.startup.promise.then(function () {
+        if (typeof window.__renderMath === "function") window.__renderMath();
+      });
+    }
+  }
+};
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.js"></script>
+<style>body { margin: 0; } img { max-width: 100%; } [hidden] { display: none !important; }</style>
+</head>
+<body>
+<main class="wrap">
+  <header>
+    <p class="eyebrow">Oozing · slime cap</p>
+    <h1>Oozing slime box</h1>
+    <p class="lede">Slimes inside the dying mob's hitbox + 2 blocks count toward the cap</p>
+    <code class="snippet">mob.level().getEntities(EntityTypes.SLIME, mob.getBoundingBox().inflate(2.0), slime -&gt; slime != mob, slimesNearby, maxResults);</code>
+  </header>
+
+  <section class="general" aria-labelledby="general-h">
+    <h2 id="general-h">The rule</h2>
+    <p class="hint" style="margin:0">Counts when all three hold (positions are feet centres)</p>
+    <div class="math tex-fallback" data-tex-key="general">|x_s − x_m| &lt; W/2 + 2 + s/2
+|z_s − z_m| &lt; W/2 + 2 + s/2
+y_m − 2 − s &lt; y_s &lt; y_m + H + 2        s = 0.52 n</div>
+  </section>
+
+  <div class="grid">
+    <form class="inputs" id="form" autocomplete="off">
+      <fieldset>
+        <legend>Dying mob</legend>
+        <div class="field">
+          <label for="mob">Mob</label>
+          <select id="mob" name="mob"></select>
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label for="w">Width W</label>
+            <input id="w" name="w" type="number" inputmode="decimal" step="0.01" min="0.01" max="64" value="1.4">
+          </div>
+          <div class="field">
+            <label for="h">Height H</label>
+            <input id="h" name="h" type="number" inputmode="decimal" step="0.01" min="0.01" max="64" value="2.7">
+          </div>
+        </div>
+        <div class="field">
+          <label for="k">Scale k</label>
+          <input id="k" name="k" type="number" inputmode="decimal" step="0.05" min="0.05" max="16" value="1">
+          <span class="hint"><code>scale</code> attribute, or 0.5 for a baby</span>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Slime</legend>
+        <div class="field">
+          <label for="n">Slime size n</label>
+          <input id="n" name="n" type="number" inputmode="numeric" step="1" min="1" max="127" value="2">
+          <span class="hint">Oozing spawns size 2</span>
+        </div>
+        <div class="field">
+          <span class="label" id="pos-l">Slime offset from the mob's feet</span>
+          <div class="row3" role="group" aria-labelledby="pos-l">
+            <div class="field">
+              <label for="dx">Δx</label>
+              <input id="dx" name="dx" type="number" inputmode="decimal" step="0.1" min="-64" max="64" value="2.5">
+            </div>
+            <div class="field">
+              <label for="dy">Δy</label>
+              <input id="dy" name="dy" type="number" inputmode="decimal" step="0.1" min="-64" max="64" value="0.5">
+            </div>
+            <div class="field">
+              <label for="dz">Δz</label>
+              <input id="dz" name="dz" type="number" inputmode="decimal" step="0.1" min="-64" max="64" value="0">
+            </div>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Spawn count</legend>
+        <div class="row2">
+          <div class="field">
+            <label for="c">maxEntityCramming C</label>
+            <input id="c" name="c" type="number" inputmode="numeric" step="1" min="0" max="10000" value="24">
+          </div>
+          <div class="field">
+            <label for="sc">Slimes counted S</label>
+            <input id="sc" name="sc" type="number" inputmode="numeric" step="1" min="0" max="10000" value="23">
+          </div>
+        </div>
+      </fieldset>
+    </form>
+
+    <div class="panel" aria-live="polite">
+      <p class="error" id="error" hidden></p>
+
+      <section aria-labelledby="nums-h">
+        <h2 id="nums-h">Your numbers</h2>
+        <div class="math" id="subst"></div>
+        <dl class="figures" id="figures">
+          <div><dt>Straight-out reach R</dt><dd id="f-r">–</dd></div>
+          <div><dt>Corner reach R·√2</dt><dd id="f-corner">–</dd></div>
+          <div><dt>Slime feet window</dt><dd id="f-window">–</dd></div>
+          <div><dt>Counting box</dt><dd id="f-box">–</dd></div>
+        </dl>
+      </section>
+
+      <section aria-labelledby="check-h">
+        <h2 id="check-h">Does this slime count?</h2>
+        <div class="checks">
+          <div class="check-row"><div class="math" id="chk-x"></div><span class="pill" id="pill-x"></span></div>
+          <div class="check-row"><div class="math" id="chk-z"></div><span class="pill" id="pill-z"></span></div>
+          <div class="check-row"><div class="math" id="chk-y"></div><span class="pill" id="pill-y"></span></div>
+        </div>
+        <p class="verdict" id="verdict"></p>
+      </section>
+
+      <section aria-labelledby="side-h">
+        <h2 id="side-h">Side view</h2>
+        <div class="diagram" id="diagram"></div>
+        <ul class="legend">
+          <li><span class="sw mob"></span>Mob hitbox</li>
+          <li><span class="sw box"></span>Hitbox + 2 (<code>inflate(2.0)</code>)</li>
+          <li><span class="sw zone"></span>Where the slime's feet must be</li>
+          <li><span class="sw slime"></span>Your slime</li>
+        </ul>
+        <p class="hint" style="margin:0">x across, y up, 1 square = 1 block, z works like x</p>
+      </section>
+
+      <section aria-labelledby="spawn-h">
+        <h2 id="spawn-h">Slimes spawned</h2>
+        <div class="math" id="spawn"></div>
+        <p class="hint" id="spawn-note" style="margin:0"></p>
+      </section>
+    </div>
+  </div>
+
+  <section class="glossary" aria-labelledby="gloss-h">
+    <h2 id="gloss-h">Variables</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th scope="col">Symbol</th><th scope="col">Meaning</th><th scope="col">Source</th></tr></thead>
+        <tbody>
+          <tr><td><span class="math" data-tex-key="gW" data-inline>W</span></td><td>Mob hitbox width × k, in blocks</td><td><code>EntityTypes</code> <code>.sized(width, height)</code></td></tr>
+          <tr><td><span class="math" data-tex-key="gH" data-inline>H</span></td><td>Mob hitbox height × k, in blocks</td><td>Same <code>.sized(...)</code></td></tr>
+          <tr><td><span class="math" data-tex-key="gk" data-inline>k</span></td><td><code>scale</code> attribute, 0.5 for a baby</td><td><code>LivingEntity.getDimensions</code></td></tr>
+          <tr><td><span class="math" data-tex-key="gn" data-inline>n</span></td><td>Slime size, Oozing spawns 2</td><td><code>setSize(2, true)</code></td></tr>
+          <tr><td><span class="math" data-tex-key="gs" data-inline>s = 0.52 n</span></td><td>Slime hitbox width and height</td><td><code>EntityTypes.SLIME</code> <code>.sized(0.52F, 0.52F)</code></td></tr>
+          <tr><td><span class="math" data-tex-key="gm" data-inline>x_m, y_m, z_m</span></td><td>Mob's feet, the bottom centre of its hitbox</td><td><code>EntityDimensions.makeBoundingBox</code></td></tr>
+          <tr><td><span class="math" data-tex-key="gsp" data-inline>x_s, y_s, z_s</span></td><td>Slime's feet</td><td>Same</td></tr>
+          <tr><td><span class="math" data-tex-key="gd" data-inline>Δx, Δy, Δz</span></td><td>Slime minus mob, like Δx = x_s − x_m</td><td>–</td></tr>
+          <tr><td><span class="math" data-tex-key="g2" data-inline>2</span></td><td>Padding on every side, up and down too</td><td><code>inflate(2.0)</code></td></tr>
+          <tr><td><span class="math" data-tex-key="gR" data-inline>R</span></td><td>Max |Δx| and |Δz|, corners reach R·√2</td><td>–</td></tr>
+          <tr><td><span class="math" data-tex-key="glt" data-inline>&lt;</span></td><td>Strict, touching the edge doesn't count</td><td><code>AABB.intersects</code></td></tr>
+          <tr><td><span class="math" data-tex-key="gC" data-inline>C</span></td><td><code>maxEntityCramming</code>, below 1 means no cap</td><td><code>onMobRemoved</code></td></tr>
+          <tr><td><span class="math" data-tex-key="gS" data-inline>S</span></td><td>Slimes counted, stops at C</td><td><code>getEntities(..., maxResults)</code></td></tr>
+          <tr><td><span class="math" data-tex-key="gN" data-inline>N</span></td><td>Slimes spawned</td><td><code>numberOfSlimesToSpawn</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+
+  var PRESETS = [
+    { id: "silverfish", name: "Silverfish", w: 0.4, h: 0.3 },
+    { id: "chicken", name: "Chicken", w: 0.4, h: 0.7 },
+    { id: "iron_golem", name: "Iron golem", w: 1.4, h: 2.7 },
+    { id: "snow_golem", name: "Snow golem", w: 0.7, h: 1.9 },
+    { id: "player", name: "Player", w: 0.6, h: 1.8 }
+  ];
+
+  var STATIC_TEX = {
+    general:
+      "\\begin{aligned}" +
+      "|x_s - x_m| &< \\tfrac{W}{2} + 2 + \\tfrac{s}{2} \\\\" +
+      "|z_s - z_m| &< \\tfrac{W}{2} + 2 + \\tfrac{s}{2} \\\\" +
+      "y_m - 2 - s &< y_s < y_m + H + 2" +
+      "\\end{aligned}" +
+      "\\qquad\\qquad s = 0.52\\,n",
+    gW: "W", gH: "H", gk: "k", gn: "n", gs: "s = 0.52\\,n",
+    gm: "x_m,\\ y_m,\\ z_m", gsp: "x_s,\\ y_s,\\ z_s",
+    gd: "\\Delta x,\\ \\Delta y,\\ \\Delta z", g2: "2", gR: "R", glt: "<",
+    gC: "C", gS: "S", gN: "N"
+  };
+
+  function mathReady() {
+    return !!(window.MathJax && typeof window.MathJax.tex2svg === "function");
+  }
+
+  function renderTex(el, tex, inline, plain) {
+    el.setAttribute("aria-label", plain);
+    if (mathReady()) {
+      try {
+        var node = window.MathJax.tex2svg(tex, { display: !inline });
+        node.setAttribute("aria-hidden", "true");
+        el.classList.remove("tex-fallback");
+        el.replaceChildren(node);
+        return;
+      } catch (e) { /* fall through to plain text */ }
+    }
+    el.classList.add("tex-fallback");
+    el.textContent = plain;
+  }
+
+  var staticRendered = false;
+  var sheetAdded = false;
+  function renderStatic() {
+    if (staticRendered || !mathReady()) return;
+    if (!sheetAdded && typeof window.MathJax.svgStylesheet === "function") {
+      try { document.head.appendChild(window.MathJax.svgStylesheet()); } catch (e) { /* optional */ }
+      sheetAdded = true;
+    }
+    var nodes = document.querySelectorAll("[data-tex-key]");
+    for (var i = 0; i < nodes.length; i++) {
+      var el = nodes[i];
+      var tex = STATIC_TEX[el.getAttribute("data-tex-key")];
+      if (tex) renderTex(el, tex, el.hasAttribute("data-inline"), el.textContent);
+    }
+    staticRendered = true;
+  }
+
+  // Populate the mob list.
+  var sel = $("mob");
+  PRESETS.forEach(function (p) {
+    var o = document.createElement("option");
+    o.value = p.id;
+    o.textContent = p.name + " (" + p.w + " × " + p.h + ")";
+    sel.appendChild(o);
+  });
+  var customOpt = document.createElement("option");
+  customOpt.value = "custom";
+  customOpt.textContent = "Custom size";
+  sel.appendChild(customOpt);
+  sel.value = "iron_golem";
+
+  function presetById(id) {
+    for (var i = 0; i < PRESETS.length; i++) if (PRESETS[i].id === id) return PRESETS[i];
+    return null;
+  }
+
+  sel.addEventListener("change", function () {
+    var p = presetById(sel.value);
+    if (p) { $("w").value = p.w; $("h").value = p.h; }
+    update();
+  });
+  ["w", "h"].forEach(function (id) {
+    $(id).addEventListener("input", function () {
+      var p = presetById(sel.value);
+      if (!p || Number($("w").value) !== p.w || Number($("h").value) !== p.h) sel.value = "custom";
+      update();
+    });
+  });
+  ["k", "n", "dx", "dy", "dz", "c", "sc"].forEach(function (id) {
+    $(id).addEventListener("input", update);
+  });
+  $("form").addEventListener("submit", function (e) { e.preventDefault(); });
+
+  function readNum(id, opts) {
+    opts = opts || {};
+    var el = $(id);
+    var raw = el.value.trim();
+    var v = raw === "" ? NaN : Number(raw);
+    var ok = Number.isFinite(v);
+    if (ok && opts.integer && !Number.isInteger(v)) ok = false;
+    if (ok && opts.min !== undefined && !(v >= opts.min)) ok = false;
+    if (ok && opts.minExclusive !== undefined && !(v > opts.minExclusive)) ok = false;
+    el.setAttribute("aria-invalid", ok ? "false" : "true");
+    return ok ? v : null;
+  }
+
+  function fmt(v) {
+    if (Math.abs(v) < 5e-7) v = 0;
+    var s = String(Number(v.toFixed(4)));
+    return s === "-0" ? "0" : s;
+  }
+  function texNum(v) { return fmt(v); }
+
+  function pill(id, yes) {
+    var el = $(id);
+    el.textContent = yes ? "yes" : "no";
+    el.className = "pill " + (yes ? "yes" : "no");
+  }
+
+  var SVGNS = "http://www.w3.org/2000/svg";
+  function svgEl(tag, attrs, cls) {
+    var el = document.createElementNS(SVGNS, tag);
+    for (var k in attrs) el.setAttribute(k, attrs[k]);
+    if (cls) el.setAttribute("class", cls);
+    return el;
+  }
+
+  function drawDiagram(d) {
+    var pad = { l: 44, r: 14, t: 14, b: 34 };
+    var VW = 520, maxH = 440;
+    var xmin = Math.min(-d.R, d.dx - d.s / 2) - 0.75;
+    var xmax = Math.max(d.R, d.dx + d.s / 2) + 0.75;
+    var ymin = Math.min(d.yLo, d.dy) - 0.75;
+    var ymax = Math.max(d.yHi, d.dy + d.s) + 0.75;
+    var innerW = VW - pad.l - pad.r;
+    var sc = innerW / (xmax - xmin);
+    var VH = (ymax - ymin) * sc + pad.t + pad.b;
+    var offX = pad.l;
+    if (VH > maxH) {
+      sc = (maxH - pad.t - pad.b) / (ymax - ymin);
+      VH = maxH;
+      offX = pad.l + (innerW - (xmax - xmin) * sc) / 2;
+    }
+    var X = function (x) { return offX + (x - xmin) * sc; };
+    var Y = function (y) { return pad.t + (ymax - y) * sc; };
+
+    var svg = svgEl("svg", {
+      viewBox: "0 0 " + VW + " " + VH.toFixed(1),
+      role: "img",
+      "aria-label": "Side view: the mob hitbox, the box 2 blocks around it, the zone where a slime's feet must be, and your slime."
+    });
+
+    var span = Math.max(xmax - xmin, ymax - ymin);
+    var step = span <= 12 ? 1 : span <= 26 ? 2 : span <= 64 ? 5 : 10;
+
+    // Grid lines every block, labels every `step`.
+    for (var gx = Math.ceil(xmin); gx <= Math.floor(xmax); gx++) {
+      svg.appendChild(svgEl("line", { x1: X(gx), y1: Y(ymin), x2: X(gx), y2: Y(ymax) }, gx === 0 ? "g-axis" : "g-grid"));
+      if (gx % step === 0) {
+        var tx = svgEl("text", { x: X(gx), y: Y(ymin) + 18, "text-anchor": "middle" }, "g-tick");
+        tx.textContent = gx;
+        svg.appendChild(tx);
+      }
+    }
+    for (var gy = Math.ceil(ymin); gy <= Math.floor(ymax); gy++) {
+      svg.appendChild(svgEl("line", { x1: X(xmin), y1: Y(gy), x2: X(xmax), y2: Y(gy) }, gy === 0 ? "g-axis" : "g-grid"));
+      if (gy % step === 0) {
+        var ty = svgEl("text", { x: X(xmin) - 8, y: Y(gy) + 4, "text-anchor": "end" }, "g-tick");
+        ty.textContent = gy;
+        svg.appendChild(ty);
+      }
+    }
+
+    // Feet zone, counting box, mob hitbox.
+    svg.appendChild(svgEl("rect", { x: X(-d.R), y: Y(d.yHi), width: 2 * d.R * sc, height: (d.yHi - d.yLo) * sc }, "g-zone"));
+    svg.appendChild(svgEl("rect", { x: X(-d.W / 2 - 2), y: Y(d.H + 2), width: (d.W + 4) * sc, height: (d.H + 4) * sc }, "g-box"));
+    svg.appendChild(svgEl("rect", { x: X(-d.W / 2), y: Y(d.H), width: d.W * sc, height: d.H * sc }, "g-mob"));
+    svg.appendChild(svgEl("circle", { cx: X(0), cy: Y(0), r: 4 }, "g-dot"));
+
+    // The slime.
+    var outCls = d.counts ? "" : " out";
+    svg.appendChild(svgEl("rect", { x: X(d.dx - d.s / 2), y: Y(d.dy + d.s), width: d.s * sc, height: d.s * sc }, "g-slime" + outCls));
+    svg.appendChild(svgEl("circle", { cx: X(d.dx), cy: Y(d.dy), r: 4 }, "g-dot" + (d.counts ? " slime" : " out")));
+
+    $("diagram").replaceChildren(svg);
+  }
+
+  function update() {
+    var w = readNum("w", { minExclusive: 0 });
+    var h = readNum("h", { minExclusive: 0 });
+    var k = readNum("k", { minExclusive: 0 });
+    var n = readNum("n", { integer: true, min: 1 });
+    var dx = readNum("dx");
+    var dy = readNum("dy");
+    var dz = readNum("dz");
+    var C = readNum("c", { integer: true });
+    var S = readNum("sc", { integer: true, min: 0 });
+
+    var bad = [];
+    if (w === null) bad.push("width W (a number above 0)");
+    if (h === null) bad.push("height H (a number above 0)");
+    if (k === null) bad.push("scale k (a number above 0)");
+    if (n === null) bad.push("slime size n (a whole number, 1 or more)");
+    if (dx === null || dy === null || dz === null) bad.push("slime position (numbers)");
+    if (C === null) bad.push("gamerule C (a whole number)");
+    if (S === null) bad.push("slimes counted S (a whole number, 0 or more)");
+
+    var errEl = $("error");
+    if (bad.length) {
+      errEl.textContent = "Fix " + bad.join(", ") + " to see the numbers.";
+      errEl.hidden = false;
+      return;
+    }
+    errEl.hidden = true;
+
+    var W = w * k, H = h * k, s = 0.52 * n;
+    var R = W / 2 + 2 + s / 2;
+    var yLo = -(2 + s), yHi = H + 2;
+
+    // Substituted equations.
+    var lines = [];
+    var plain = [];
+    if (k !== 1) {
+      lines.push("W &= " + texNum(w) + " \\times " + texNum(k) + " = " + texNum(W));
+      lines.push("H &= " + texNum(h) + " \\times " + texNum(k) + " = " + texNum(H));
+      plain.push("W = " + fmt(w) + " × " + fmt(k) + " = " + fmt(W));
+      plain.push("H = " + fmt(h) + " × " + fmt(k) + " = " + fmt(H));
+    }
+    lines.push("s &= 0.52 \\times " + n + " = " + texNum(s));
+    lines.push("R &= \\tfrac{W}{2} + 2 + \\tfrac{s}{2} = \\tfrac{" + texNum(W) + "}{2} + 2 + \\tfrac{" + texNum(s) + "}{2} = " + texNum(R));
+    lines.push("|\\Delta x| &< " + texNum(R) + " \\qquad |\\Delta z| < " + texNum(R));
+    lines.push(texNum(yLo) + " &< \\Delta y < " + texNum(yHi));
+    plain.push("s = 0.52 × " + n + " = " + fmt(s));
+    plain.push("R = W/2 + 2 + s/2 = " + fmt(W) + "/2 + 2 + " + fmt(s) + "/2 = " + fmt(R));
+    plain.push("|Δx| < " + fmt(R) + "    |Δz| < " + fmt(R));
+    plain.push(fmt(yLo) + " < Δy < " + fmt(yHi));
+    renderTex($("subst"), "\\begin{aligned}" + lines.join(" \\\\ ") + "\\end{aligned}", false, plain.join("\n"));
+
+    $("f-r").innerHTML = fmt(R) + " <small>blocks</small>";
+    $("f-corner").innerHTML = fmt(R * Math.SQRT2) + " <small>blocks</small>";
+    $("f-window").innerHTML = fmt(2 + s) + " <small>below to</small> " + fmt(yHi) + " <small>above</small>";
+    $("f-box").innerHTML = fmt(W + 4) + " × " + fmt(H + 4) + " × " + fmt(W + 4);
+
+    // Check the slime.
+    var inX = Math.abs(dx) < R;
+    var inZ = Math.abs(dz) < R;
+    var inY = dy > yLo && dy < yHi;
+    var counts = inX && inY && inZ;
+
+    renderTex($("chk-x"),
+      "|\\Delta x| = " + texNum(Math.abs(dx)) + (inX ? " < " : " \\ge ") + texNum(R), true,
+      "|Δx| = " + fmt(Math.abs(dx)) + (inX ? " < " : " ≥ ") + fmt(R));
+    renderTex($("chk-z"),
+      "|\\Delta z| = " + texNum(Math.abs(dz)) + (inZ ? " < " : " \\ge ") + texNum(R), true,
+      "|Δz| = " + fmt(Math.abs(dz)) + (inZ ? " < " : " ≥ ") + fmt(R));
+    var yTex, yPlain;
+    if (inY) {
+      yTex = texNum(yLo) + " < \\Delta y = " + texNum(dy) + " < " + texNum(yHi);
+      yPlain = fmt(yLo) + " < Δy = " + fmt(dy) + " < " + fmt(yHi);
+    } else if (dy <= yLo) {
+      yTex = "\\Delta y = " + texNum(dy) + " \\le " + texNum(yLo);
+      yPlain = "Δy = " + fmt(dy) + " ≤ " + fmt(yLo);
+    } else {
+      yTex = "\\Delta y = " + texNum(dy) + " \\ge " + texNum(yHi);
+      yPlain = "Δy = " + fmt(dy) + " ≥ " + fmt(yHi);
+    }
+    renderTex($("chk-y"), yTex, true, yPlain);
+    pill("pill-x", inX);
+    pill("pill-z", inZ);
+    pill("pill-y", inY);
+
+    var v = $("verdict");
+    v.replaceChildren();
+    var vp = document.createElement("span");
+    vp.className = "pill " + (counts ? "yes" : "no");
+    vp.textContent = counts ? "counts" : "doesn't count";
+    var vt = document.createElement("span");
+    if (counts) {
+      vt.textContent = "Inside the box, adds 1 to S";
+    } else {
+      var why = [];
+      if (!inX) why.push("x");
+      if (!inZ) why.push("z");
+      if (!inY) why.push("y");
+      vt.textContent = "Outside on " + why.join(" and ");
+    }
+    v.appendChild(vp);
+    v.appendChild(vt);
+
+    drawDiagram({ W: W, H: H, s: s, R: R, yLo: yLo, yHi: yHi, dx: dx, dy: dy, counts: counts });
+
+    // Spawn count.
+    var note = "";
+    if (C < 1) {
+      renderTex($("spawn"), "C = " + C + " < 1 \\;\\Rightarrow\\; N = 2", false, "C = " + C + " < 1, so N = 2");
+      note = "No cap below 1";
+    } else {
+      var Sc = Math.min(S, C);
+      var N = Math.min(2, C - Sc);
+      renderTex($("spawn"),
+        "N = \\min(2,\\; C - S) = \\min(2,\\; " + C + " - " + Sc + ") = " + N, false,
+        "N = min(2, C − S) = min(2, " + C + " − " + Sc + ") = " + N);
+      if (S > C) note = "Count stops at C, so S = " + C;
+      else if (N === 2) note = "Both spawn";
+      else if (N === 1) note = "1 slot left";
+      else note = "Cap reached, none spawn";
+    }
+    $("spawn-note").textContent = note;
+  }
+
+  window.__renderMath = function () { renderStatic(); update(); };
+  renderStatic();
+  update();
+})();
+</script>
+</body>
+</html>
